@@ -10,6 +10,8 @@ const Menu = ({ onSelect }) => {
   const [player2Name, setPlayer2Name] = useState("Player 2");
   const [botFile, setBotFile] = useState(null); // NEW
   const [isSubmitting, setIsSubmitting] = useState(false); // optional for UX
+  const [showDetailedRules, setShowDetailedRules] = useState(false);
+
 
   const difficulties = ["Very Easy", "Easy", "Medium", "Hard", "Ultimate"];
   const modes = ["Player vs Bot", "Player vs Player", "Bot vs Bot"];
@@ -199,16 +201,18 @@ const Menu = ({ onSelect }) => {
             {mode === "Bot vs Bot" && (
               <div className="mt-0 w-full max-w-lg">
                 <p className="mb-3 text-center text-brown_dark text-lg font-semibold">
-                  Upload Your Bot (optional)
+                  Upload Your Bot
                 </p>
+                <div class="flex justify-center items-center">
                 <input
                   type="file"
                   accept=".py"
                   onChange={(e) => setBotFile(e.target.files[0])}
-                  className="px-4 py-1 rounded-lg border border-amber_dark text-brown_dark file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-none file:bg-gold_accent file:text-white hover:file:bg-amber_dark focus:outline-none"
+                  className=" px-4 py-1 text-sm rounded-lg border border-amber_dark text-brown_dark file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-none file:bg-gold_accent file:text-white hover:file:bg-amber_dark focus:outline-none"
                 />
+                </div>
 
-                <p className="mt-3 mb-3 text-center text-brown_dark text-lg font-semibold">
+                <p className="mt-6 mb-3 text-center text-brown_dark text-lg font-semibold">
                   Select Difficulty
                 </p>
                 <div className="grid grid-cols-3 sm:flex sm:flex-nowrap justify-center gap-2">
@@ -227,11 +231,33 @@ const Menu = ({ onSelect }) => {
                     </button>
                   ))}
                 </div>
+
+                <div className="mt-6">
+                  <p className="mb-2 text-center text-brown_dark text-lg font-semibold">
+                    Choose Your Role
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    {["Player 1", "Player 2"].map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => setPlayerRole(role)}
+                        className={`px-4 py-2 rounded-lg transition-all duration-300 ease-in-out font-medium text-sm
+                          ${
+                            playerRole === role
+                              ? "bg-gold_accent text-white shadow-md"
+                              : "bg-amber_light text-brown_dark border border-amber_dark hover:bg-amber_dark hover:text-white"
+                          }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Buttons */}
-            <div className="flex gap-4 mt-6">
+            <div className="flex gap-4 mt-5">
               <button
                 disabled={isSubmitting || !mode}
                 className="px-8 py-3 bg-amber_dark text-white font-bold rounded-xl shadow-lg hover:bg-gold_accent transform hover:scale-105 transition duration-300 ease-in-out disabled:opacity-50"
@@ -275,6 +301,50 @@ const Menu = ({ onSelect }) => {
             >
               Close
             </button>
+            {/* KNOW MORE BUTTON */}
+            <button
+              className="ml-4 mt-2 px-6 py-2 bg-amber_dark text-white font-semibold rounded-lg shadow hover:scale-105 hover:bg-gold_accent transition duration-300 ease-in-out"
+              onClick={() => setShowDetailedRules(true)}
+            >
+              Know More
+            </button>
+
+{/* DETAILED RULES MODAL */}
+              {showDetailedRules && (
+                <div
+                  className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50"
+                  onClick={() => setShowDetailedRules(false)}
+                >
+                  <div
+                    className="bg-amber_light p-6 rounded-xl shadow-xl w-11/12 max-w-2xl text-brown_dark max-h-[85vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h2 className="text-3xl font-bold mb-4 text-center">Ultimate Tic-Tac-Toe Rules</h2>
+                    <div className="space-y-3 text-lg">
+                      <p>
+                        Ultimate Tic-Tac-Toe is a strategic twist on the classic Tic-Tac-Toe game, played
+                        on a 3×3 grid of 3×3 boards (9 mini-boards total).
+                      </p>
+                      <ol className="list-decimal list-inside space-y-2">
+                        <li><strong>The Board:</strong> The big board is divided into 9 smaller Tic-Tac-Toe boards.</li>
+                        <li><strong>First Move:</strong> X always plays first and can choose any square on any mini-board.</li>
+                        <li><strong>Move Restriction:</strong> The square you pick inside a mini-board determines the mini-board your opponent must play in next.</li>
+                        <li><strong>Full Mini-Boards:</strong> If a mini-board is already won or filled, the next player can move anywhere.</li>
+                        <li><strong>Winning Mini-Boards:</strong> Win a mini-board by making 3 in a row inside that board. You claim that square on the big board.</li>
+                        <li><strong>Winning the Game:</strong> Get 3 in a row on the big board to win the game.</li>
+                        <li><strong>Draw:</strong> If all mini-boards are filled without a big-board winner, the game is a draw.</li>
+                      </ol>
+                    </div>
+                    <button
+                      onClick={() => setShowDetailedRules(false)}
+                      className="mt-6 px-6 py-2 bg-gold_accent text-white font-semibold rounded-lg shadow hover:bg-amber_dark transition duration-300 ease-in-out"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 const GameBoard = ({ config, onQuit }) => {
   const { game_id, initialState } = config;
@@ -9,34 +9,12 @@ const GameBoard = ({ config, onQuit }) => {
   const [activeMiniBoard, setActiveMiniBoard] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
   const [moveNumber, setMoveNumber] = useState(0);
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [replayIndex, setReplayIndex] = useState(-1); // -1 means not in replay mode
 
-  // Restart game when component mounts
-  useEffect(() => {
-    const startGame = async () => {
-      const res = await fetch("/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          difficulty,
-          playerRole,
-          player1Name,
-          player2Name
-        }),
-      });
-      const data = await res.json();
-      setBoard(data.board);
-      setMainboard(data.mainboard || []);
-      setCurrentPlayer(data.currentPlayer);
-      setActiveMiniBoard(null);
-      setWinner(null);
-      setMoveNumber(0);
-    };
-    startGame();
-  }, [config]);
 
   const handleCellClick = async (row, col) => {
-    if (winner) return; // Game over
+    if (winner) return;
 
     try {
       const res = await fetch("/move", {
@@ -51,26 +29,30 @@ const GameBoard = ({ config, onQuit }) => {
         return;
       }
 
-      setBoard(data.board);
-      setCurrentPlayer(data.currentPlayer);
-      setWinner(data.winner || null);
+      const { board, mainboard, currentPlayer, winner, lastMove } = data;
+      setBoard(board);
+      setMainboard(mainboard);
+      setCurrentPlayer(currentPlayer);
+      setWinner(winner || null);
       setMoveNumber((prev) => prev + 1);
 
-      if (data.mainboard) {
-        setMainboard(data.mainboard);
-        const r = row % 3;
-        const c = col % 3;
-        const nextIndex = r * 3 + c;
-        const miniStatus = data.mainboard[r]?.[c];
+      if (lastMove && mainboard) {
+        const [lastRow, lastCol] = lastMove;
+        const miniRow = lastRow % 3;
+        const miniCol = lastCol % 3;
+        const nextIndex = miniRow * 3 + miniCol;
+        const miniStatus = mainboard[miniRow]?.[miniCol];
         setActiveMiniBoard(miniStatus === 0 ? nextIndex : null);
+      } else {
+        setActiveMiniBoard(null);
       }
 
-      if (data.winner) {
-        alert(data.winner === 3 ? "It's a Draw!" : `Winner: ${data.winner === 1 ? "X" : "O"}`);
+      if (winner) {
+        alert(winner === 3 ? "It's a Draw!" : `Winner: ${winner === 1 ? "X" : "O"}`);
       }
     } catch (err) {
       console.error("Error during move:", err);
-      alert("Illegal Move");
+      alert("Error making move");
     }
   };
 
@@ -78,30 +60,36 @@ const GameBoard = ({ config, onQuit }) => {
     if (window.confirm("Quit the game?")) onQuit();
   };
 
+
+  const API_BASE = "http://127.0.0.1:5000";
+
   const handleRestart = async () => {
-    if (!window.confirm("Restart the game?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/restart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id }),
+      });
 
-    const res = await fetch("/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode: config.mode,
-        difficulty: config.difficulty,
-        playerRole: config.playerRole,
-        player1Name: config.player1Name,
-        player2Name: config.player2Name,
-      }),
-    });
+      const data = await res.json();
 
-    const data = await res.json();
-    setBoard(data.board);
-    setMainboard(data.mainboard || []);
-    setCurrentPlayer(1);
-    setWinner(null);
-    setActiveMiniBoard(null);
-    setIsPaused(false);
-    setMoveNumber(0);
+      if (!data.success) {
+        alert(data.error || "Failed to restart game");
+        return;
+      }
+
+      // Update frontend state with new board
+      setBoard(data.board);
+      setMainboard(data.mainboard);
+      setCurrentPlayer(data.currentPlayer);
+      setWinner(null);
+      alert("Game restarted!");
+    } catch (err) {
+      console.error(err);
+      alert("Error restarting game");
+    }
   };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-amber_light text-brown_dark p-4">
@@ -123,6 +111,78 @@ const GameBoard = ({ config, onQuit }) => {
           >
             Pause
           </button>
+
+
+          {/* Show Run Bot Battle ONLY if Bot vs Bot */}
+<div>
+  {config.mode === "Bot vs Bot" && (
+    <>
+      <button
+        onClick={async () => {
+          try {
+            const res = await fetch("/bot-vs-bot-move", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ game_id }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              setBoard(data.board);
+              setMainBoard(data.mainboard);
+              setCurrentPlayer(data.currentPlayer);
+              setWinner(data.winner);
+              setLastMove(data.lastMove);
+
+              // ✅ Save move history
+              setMoveHistory(data.move_history || []);
+            } else {
+              alert(data.error || "Error running bot battle");
+            }
+          } catch (err) {
+            alert("Error running bot match");
+          }
+        }}
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 transition"
+      >
+        Run Bot Battle
+      </button>
+
+      {/* Replay Controls (only show if a game has finished & there are moves) */}
+      {winner && moveHistory.length > 0 && (
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => {
+              setReplayIndex(0);
+              setBoard(Array(9).fill().map(() => Array(9).fill(0))); // Reset board
+              setMainBoard(Array(9).fill(0));
+            }}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+          >
+            Start Replay
+          </button>
+          {replayIndex >= 0 && replayIndex < moveHistory.length && (
+            <button
+              onClick={() => {
+                const nextMove = moveHistory[replayIndex];
+                const [r, c] = nextMove.move;
+
+                const newBoard = board.map((row) => [...row]);
+                newBoard[r][c] = nextMove.player;
+
+                setBoard(newBoard);
+                setReplayIndex(replayIndex + 1);
+              }}
+              className="bg-green-500 text-white px-4 py-2 rounded-lg"
+            >
+              Next Move
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  )}
+</div>
+
         </div>
       </div>
 
@@ -136,11 +196,10 @@ const GameBoard = ({ config, onQuit }) => {
           return (
             <div
               key={miniIndex}
-              className={`grid grid-cols-3 gap-1 p-1 lg:p-2 border-2 rounded-md transition ${
-                isActive
-                  ? "border-gold_accent bg-amber_light"
-                  : "border-gray-400 bg-gray-100 opacity-70"
-              }`}
+              className={`grid grid-cols-3 gap-1 p-1 lg:p-2 border-2 rounded-md transition ${isActive
+                ? "border-gold_accent bg-amber_light"
+                : "border-gray-400 bg-gray-100 opacity-70"
+                }`}
             >
               {Array.from({ length: 9 }).map((_, i) => {
                 const r = miniRow * 3 + Math.floor(i / 3);
@@ -151,13 +210,12 @@ const GameBoard = ({ config, onQuit }) => {
                   <div
                     key={`${r}-${c}`}
                     onClick={() => handleCellClick(r, c)}
-                    className={`flex items-center justify-center rounded-md border bg-white border-brown_dark text-lg sm:text-xl font-bold aspect-square cursor-pointer transition ${
-                      value === 1
-                        ? "text-red_accent"
-                        : value === 2
+                    className={`flex items-center justify-center rounded-md border bg-white border-brown_dark text-lg sm:text-xl font-bold aspect-square cursor-pointer transition ${value === 1
+                      ? "text-red_accent"
+                      : value === 2
                         ? "text-blue-500"
                         : "hover:bg-amber_dark/20"
-                    }`}
+                      }`}
                   >
                     {value === 1 ? "X" : value === 2 ? "O" : ""}
                   </div>
