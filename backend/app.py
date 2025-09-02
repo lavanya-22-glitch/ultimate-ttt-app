@@ -153,6 +153,105 @@ def bot_vs_bot_move():
         "move_history": move_history
     })
 
+import random
+
+@app.route("/bot-vs-bot-run", methods=["POST"])
+def bot_vs_bot_run():
+    """Run a Bot vs Bot game using uploaded bot + difficulty bot."""
+    data = request.get_json()
+    game_id = data.get("game_id")
+
+    session = games.get(game_id)
+    if not session:
+        return jsonify({"success": False, "error": "Game not found"}), 400
+
+    game = session["game"]
+    bot1 = session.get("bot1")
+    bot2 = session.get("bot2")
+
+    if not bot1 or not bot2:
+        return jsonify({"success": False, "error": "Bots not loaded"}), 400
+
+    board = game.board
+    mainboard = game.mainboard
+    current_player = game.curr_player
+    activeMiniBoard = None
+    winner = game.get_winner()
+    move_history = []
+
+    # Use previous move if any
+    prev_move = game.last
+
+    def get_valid_moves(board, activeMiniBoard):
+        moves = []
+        if activeMiniBoard is not None:
+            miniRow = activeMiniBoard // 3
+            miniCol = activeMiniBoard % 3
+            for i in range(3):
+                for j in range(3):
+                    r, c = miniRow * 3 + i, miniCol * 3 + j
+                    if board[r][c] == 0:
+                        moves.append((r, c))
+        else:
+            for i in range(9):
+                for j in range(9):
+                    if board[i][j] == 0:
+                        moves.append((i, j))
+        return moves
+
+    # Play until a winner or maximum moves for safety
+    max_moves = 50
+    for _ in range(max_moves):
+        if winner:
+            break
+
+        current_bot = bot1 if current_player == 1 else bot2
+        valid_moves = get_valid_moves(board, activeMiniBoard)
+
+        try:
+            move = current_bot.play(board, prev_move, current_player)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Bot crashed: {str(e)}"}), 500
+
+        # Fallback to random if bot returns invalid move
+        if not move or move not in valid_moves:
+            move = random.choice(valid_moves)
+
+        # Apply move
+        r, c = move
+        game.move(r, c)  # use your game engine's method
+        move_history.append({"player": current_player, "move": [r, c]})
+        prev_move = move
+
+        # Update activeMiniBoard based on last move and mainboard
+        miniRow = r % 3
+        miniCol = c % 3
+        nextIndex = miniRow * 3 + miniCol
+        activeMiniBoard = nextIndex if mainboard[miniRow][miniCol] == 0 else None
+
+        # Switch player
+        current_player = 1 if current_player == 2 else 2
+        winner = game.get_winner()
+
+    # Save back to session
+    session.update({
+        "board": game.board,
+        "mainboard": game.mainboard,
+        "curr_player": current_player,
+        "winner": winner,
+        "activeMiniBoard": activeMiniBoard,
+        "move_history": move_history
+    })
+
+    return jsonify({
+        "success": True,
+        "board": game.board,
+        "mainboard": game.mainboard,
+        "currentPlayer": current_player,
+        "winner": winner,
+        "activeMiniBoard": activeMiniBoard,
+        "move_history": move_history
+    })
 
 @app.route("/move", methods=["POST"])
 def move():

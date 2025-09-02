@@ -7,6 +7,7 @@ function App() {
   const [gameConfig, setGameConfig] = useState(null); // store mode, difficulty, etc.
 
   const startGame = (config) => {
+    console.log("Starting game with config:", config);
     setGameConfig(config);
     setScreen("game");
   };
@@ -15,6 +16,13 @@ function App() {
     setScreen("menu");
     setGameConfig(null);
   };
+
+  {screen === "game" && (
+    <>
+      <pre>{JSON.stringify(gameConfig, null, 2)}</pre>
+      <GameBoard config={gameConfig} onQuit={quitGame} />
+    </>
+  )}
 
   return (
     <div className="min-h-screen">

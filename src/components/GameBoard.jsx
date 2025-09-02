@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+const API_BASE = "http://127.0.0.1:5000";
+
 
 const GameBoard = ({ config, onQuit }) => {
   const { game_id, initialState } = config;
-  const [board, setBoard] = useState(initialState.board);
-  const [mainboard, setMainboard] = useState(initialState.mainboard);
+  const [board, setBoard] = useState(initialState.board || Array(9).fill().map(() => Array(9).fill(0)));
+  const [mainboard, setMainboard] = useState(initialState.mainboard || Array(3).fill().map(() => Array(3).fill(0)));
   const [currentPlayer, setCurrentPlayer] = useState(initialState.currentPlayer);
   const [winner, setWinner] = useState(initialState.winner);
   const [activeMiniBoard, setActiveMiniBoard] = useState(null);
@@ -13,6 +15,58 @@ const GameBoard = ({ config, onQuit }) => {
   const [replayIndex, setReplayIndex] = useState(-1);
   const [replayInterval, setReplayInterval] = useState(500); // ms per move
   const [isAutoReplay, setIsAutoReplay] = useState(false);
+
+  // const API_BASE = "http://127.0.0.1:5000";
+
+const runBotBattle = async () => {
+  console.log("runBotBattle called"); // ✅ entry point
+  try {
+    const res = await fetch(`${API_BASE}/bot-vs-bot-run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game_id }),
+    });
+
+    console.log("Response received:", res); // ✅ check if server responded
+
+    const text = await res.text(); // get raw response
+    console.log("Raw response text:", text); // ✅ see what backend returned
+
+    const data = JSON.parse(text); // parse JSON manually
+    console.log("Parsed JSON:", data); // ✅ parsed object
+
+    if (data.success) {
+      const { move_history = [], winner, board, mainboard } = data;
+
+      const playMoves = async () => {
+        for (let i = 0; i < move_history.length; i++) {
+          const partialHistory = move_history.slice(0, i + 1);
+
+          // Update UI for this step
+          setMoveHistory(partialHistory);
+          setMoveNumber(partialHistory.length);
+
+          // If you want to recompute board at each step, do it here
+          setBoard([...board]);
+          setMainboard([...mainboard]);
+
+          // 🔥 Give React time to render
+          await new Promise((resolve) => setTimeout(resolve, 1000)); 
+        }
+
+        setWinner(winner);
+      };
+
+      playMoves();
+    } else {
+      console.log("Bot battle failed:", data.error);
+      alert(data.error || "Bot battle failed");
+    }
+  } catch (err) {
+    console.error("Error running bot battle:", err); // ✅ catch errors
+    alert("Error running bot battle");
+  }
+};
 
 
   useEffect(() => {
@@ -89,9 +143,6 @@ const GameBoard = ({ config, onQuit }) => {
     if (window.confirm("Quit the game?")) onQuit();
   };
 
-
-  const API_BASE = "http://127.0.0.1:5000";
-
   const handleRestart = async () => {
     try {
       const res = await fetch(`${API_BASE}/restart`, {
@@ -143,10 +194,12 @@ const GameBoard = ({ config, onQuit }) => {
 
 
           {/* Show Run Bot Battle ONLY if Bot vs Bot */}
-<div>
-  {config.mode === "Bot vs Bot" && (
-    <>
-      <button
+
+
+          <div>
+            {config.mode === "Bot vs Bot" && (
+              <>
+                {/* <button
         onClick={async () => {
           try {
             const res = await fetch("/bot-vs-bot-move", {
@@ -175,55 +228,62 @@ const GameBoard = ({ config, onQuit }) => {
         className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 transition"
       >
         Run Bot Battle
-      </button>
+      </button> */}
+              <button
+                onClick={runBotBattle}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md 
+                          hover:bg-blue-600 active:scale-95 transition-transform duration-150"
+              >
+                Run Bot Battle
+              </button>
 
-      {/* Replay Controls (only show if a game has finished & there are moves) */}
-      {winner && moveHistory.length > 0 && (
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => {
-              setReplayIndex(0);
-              setBoard(Array(9).fill().map(() => Array(9).fill(0))); // Reset board
-              setMainBoard(Array(9).fill(0));
-            }}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-          >
-            Start Replay
-          </button>
-          {replayIndex >= 0 && replayIndex < moveHistory.length && (
-            <button
-              onClick={() => {
-                if (replayIndex + 1 < moveHistory.length) {
-                  const nextMove = moveHistory[replayIndex + 1];
-                  const [r, c] = nextMove.move;
-                  setBoard(prevBoard => {
-                    const newBoard = prevBoard.map(row => [...row]);
-                    newBoard[r][c] = nextMove.player;
-                    return newBoard;
-                  });
-                  setReplayIndex(replayIndex + 1);
-                }
-              }}
-            >
-              Next Move
-            </button>
-          )}
-        </div>
-      )}
+                {/* Replay Controls (only show if a game has finished & there are moves) */}
+                {winner && moveHistory.length > 0 && (
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => {
+                        setReplayIndex(0);
+                        setBoard(Array(9).fill().map(() => Array(9).fill(0))); // Reset board
+                        setMainBoard(Array(9).fill(0));
+                      }}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                    >
+                      Start Replay
+                    </button>
+                    {replayIndex >= 0 && replayIndex < moveHistory.length && (
+                      <button
+                        onClick={() => {
+                          if (replayIndex + 1 < moveHistory.length) {
+                            const nextMove = moveHistory[replayIndex + 1];
+                            const [r, c] = nextMove.move;
+                            setBoard(prevBoard => {
+                              const newBoard = prevBoard.map(row => [...row]);
+                              newBoard[r][c] = nextMove.player;
+                              return newBoard;
+                            });
+                            setReplayIndex(replayIndex + 1);
+                          }
+                        }}
+                      >
+                        Next Move
+                      </button>
+                    )}
+                  </div>
+                )}
 
-      <input
-        type="range"
-        min="100"
-        max="2000"
-        step="50"
-        value={replayInterval}
-        onChange={(e) => setReplayInterval(Number(e.target.value))}
-      />
-      <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span>
+                <input
+                  type="range"
+                  min="100"
+                  max="2000"
+                  step="50"
+                  value={replayInterval}
+                  onChange={(e) => setReplayInterval(Number(e.target.value))}
+                />
+                <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span>
 
-    </>
-  )}
-</div>
+              </>
+            )}
+          </div>
 
         </div>
       </div>

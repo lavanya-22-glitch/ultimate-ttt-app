@@ -52,6 +52,7 @@ const Menu = ({ onSelect }) => {
       if (data.success) {
         onSelect({
           game_id: data.game_id,
+          mode: data.mode,
           initialState: data,
         });
       } else {
@@ -203,7 +204,7 @@ const Menu = ({ onSelect }) => {
                 <p className="mb-3 text-center text-brown_dark text-lg font-semibold">
                   Upload Your Bot
                 </p>
-                <div class="flex justify-center items-center">
+                <div className="flex justify-center items-center">
                 <input
                   type="file"
                   accept=".py"
