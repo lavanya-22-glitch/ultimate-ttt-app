@@ -4,7 +4,7 @@
 import importlib
 from ultimate_ttt_engine import UltimateTTT
 
-bot1 = importlib.import_module("minimax_strat6") #change with your bot's file name
+bot1 = importlib.import_module("random_bot") #change with your bot's file name
 bot2 = importlib.import_module("random_bot")
 
 def run():

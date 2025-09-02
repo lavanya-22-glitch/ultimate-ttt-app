@@ -10,7 +10,36 @@ const GameBoard = ({ config, onQuit }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [moveNumber, setMoveNumber] = useState(0);
   const [moveHistory, setMoveHistory] = useState([]);
-  const [replayIndex, setReplayIndex] = useState(-1); // -1 means not in replay mode
+  const [replayIndex, setReplayIndex] = useState(-1);
+  const [replayInterval, setReplayInterval] = useState(500); // ms per move
+  const [isAutoReplay, setIsAutoReplay] = useState(false);
+
+
+  useEffect(() => {
+    if (!isAutoReplay || replayIndex === -1 || replayIndex >= moveHistory.length) return;
+
+    const interval = setInterval(() => {
+      setReplayIndex(prev => {
+        if (prev + 1 >= moveHistory.length) {
+          clearInterval(interval);
+          setIsAutoReplay(false);
+          return prev;
+        }
+
+        const nextMove = moveHistory[prev + 1];
+        const [r, c] = nextMove.move;
+        setBoard(prevBoard => {
+          const newBoard = prevBoard.map(row => [...row]);
+          newBoard[r][c] = nextMove.player;
+          return newBoard;
+        });
+
+        return prev + 1;
+      });
+    }, replayInterval);
+
+    return () => clearInterval(interval);
+  }, [isAutoReplay, replayIndex, replayInterval, moveHistory]);
 
 
   const handleCellClick = async (row, col) => {
@@ -128,10 +157,11 @@ const GameBoard = ({ config, onQuit }) => {
             const data = await res.json();
             if (data.success) {
               setBoard(data.board);
-              setMainBoard(data.mainboard);
+              setMainboard(data.mainboard);
               setCurrentPlayer(data.currentPlayer);
               setWinner(data.winner);
-              setLastMove(data.lastMove);
+              setMoveNumber(data.move_history?.length || 0);
+              setReplayIndex(-1);
 
               // ✅ Save move history
               setMoveHistory(data.move_history || []);
@@ -163,22 +193,34 @@ const GameBoard = ({ config, onQuit }) => {
           {replayIndex >= 0 && replayIndex < moveHistory.length && (
             <button
               onClick={() => {
-                const nextMove = moveHistory[replayIndex];
-                const [r, c] = nextMove.move;
-
-                const newBoard = board.map((row) => [...row]);
-                newBoard[r][c] = nextMove.player;
-
-                setBoard(newBoard);
-                setReplayIndex(replayIndex + 1);
+                if (replayIndex + 1 < moveHistory.length) {
+                  const nextMove = moveHistory[replayIndex + 1];
+                  const [r, c] = nextMove.move;
+                  setBoard(prevBoard => {
+                    const newBoard = prevBoard.map(row => [...row]);
+                    newBoard[r][c] = nextMove.player;
+                    return newBoard;
+                  });
+                  setReplayIndex(replayIndex + 1);
+                }
               }}
-              className="bg-green-500 text-white px-4 py-2 rounded-lg"
             >
               Next Move
             </button>
           )}
         </div>
       )}
+
+      <input
+        type="range"
+        min="100"
+        max="2000"
+        step="50"
+        value={replayInterval}
+        onChange={(e) => setReplayInterval(Number(e.target.value))}
+      />
+      <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span>
+
     </>
   )}
 </div>
