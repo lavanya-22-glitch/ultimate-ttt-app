@@ -202,10 +202,7 @@ const GameBoard = ({ config, onQuit }) => {
             Pause
           </button>
 
-
           {/* Show Run Bot Battle ONLY if Bot vs Bot */}
-
-
           <div>
             {config.mode === "Bot vs Bot" && (
               <>
@@ -216,50 +213,6 @@ const GameBoard = ({ config, onQuit }) => {
                 >
                   Run Bot Battle
                 </button>
-
-                {/* Replay Controls (only show if a game has finished & there are moves)
-                {winner && moveHistory.length > 0 && (
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      onClick={() => {
-                        setReplayIndex(0);
-                        setBoard(Array(9).fill().map(() => Array(9).fill(0))); // Reset board
-                        setMainBoard(Array(9).fill(0));
-                      }}
-                      className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-                    >
-                      Start Replay
-                    </button>
-                    {replayIndex >= 0 && replayIndex < moveHistory.length && (
-                      <button
-                        onClick={() => {
-                          if (replayIndex + 1 < moveHistory.length) {
-                            const nextMove = moveHistory[replayIndex + 1];
-                            const [r, c] = nextMove.move;
-                            setBoard(prevBoard => {
-                              const newBoard = prevBoard.map(row => [...row]);
-                              newBoard[r][c] = nextMove.player;
-                              return newBoard;
-                            });
-                            setReplayIndex(replayIndex + 1);
-                          }
-                        }}
-                      >
-                        Next Move
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <input
-                  type="range"
-                  min="100"
-                  max="2000"
-                  step="50"
-                  value={replayInterval}
-                  onChange={(e) => setReplayInterval(Number(e.target.value))}
-                />
-                <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span> */}
 
                 <div
                   className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 transition-opacity duration-500 ${loading ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -367,44 +320,69 @@ const GameBoard = ({ config, onQuit }) => {
       {config.mode === "Bot vs Bot" && winner && moveHistory.length > 0 && (
         <div className="mt-8 flex flex-col items-center gap-4">
           {/* Replay Buttons */}
-          {/* Replay Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center mt-1">
+
             <button
               onClick={() => {
                 setReplayIndex(0);
                 setBoard(Array(9).fill().map(() => Array(9).fill(0)));
                 setMainboard(Array(3).fill().map(() => Array(3).fill(0)));
               }}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition"
+              className="bg-red_accent text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition"
             >
               Start Replay
             </button>
 
-            {replayIndex >= 0 && replayIndex < moveHistory.length && (
-              <button
-                onClick={() => {
-                  if (replayIndex + 1 < moveHistory.length) {
-                    const nextMove = moveHistory[replayIndex + 1];
-                    const [r, c] = nextMove.move;
-                    setBoard(prevBoard => {
-                      const newBoard = prevBoard.map(row => [...row]);
-                      newBoard[r][c] = nextMove.player;
-                      return newBoard;
-                    });
-                    setReplayIndex(replayIndex + 1);
-                  }
-                }}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600 transition"
-              >
-                Next Move
-              </button>
-            )}
+            {/* Step Backward */}
+            <button
+              onClick={() => {
+                if (replayIndex > 0) {
+                  const prevIndex = replayIndex - 1;
 
+                  // Rebuild board up to prevIndex
+                  const newBoard = Array(9).fill().map(() => Array(9).fill(0));
+                  for (let i = 0; i <= prevIndex; i++) {
+                    const { move, player } = moveHistory[i];
+                    const [r, c] = move;
+                    newBoard[r][c] = player;
+                  }
+
+                  setBoard(newBoard);
+                  setReplayIndex(prevIndex);
+                }
+              }}
+              className="bg-amber_dark text-white px-4 py-2 rounded-lg shadow hover:bg-gold_accent transition"
+            >
+              {"<"}
+            </button>
+
+            {/* Step Forward */}
+            <button
+              onClick={() => {
+                if (replayIndex + 1 < moveHistory.length) {
+                  const nextMove = moveHistory[replayIndex + 1];
+                  const [r, c] = nextMove.move;
+
+                  setBoard(prevBoard => {
+                    const newBoard = prevBoard.map(row => [...row]);
+                    newBoard[r][c] = nextMove.player;
+                    return newBoard;
+                  });
+
+                  setReplayIndex(replayIndex + 1);
+                }
+              }}
+              className="bg-amber_dark text-white px-4 py-2 rounded-lg shadow hover:bg-gold_accent transition"
+            >
+              {">"}
+            </button>
+
+            {/* Auto Replay Toggle */}
             <button
               onClick={() => setIsAutoReplay(prev => !prev)}
-              className="bg-purple-500 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition"
             >
-              {isAutoReplay ? "Pause Auto Replay" : "Play Auto Replay"}
+              {isAutoReplay ? "Pause Auto Replay <3" : "Play Auto Replay <3"}
             </button>
           </div>
 
