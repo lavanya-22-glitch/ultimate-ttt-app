@@ -18,9 +18,6 @@ const GameBoard = ({ config, onQuit }) => {
   const [isAutoReplay, setIsAutoReplay] = useState(false);
   const [lastMoveCell, setLastMoveCell] = useState(null); // [row, col] of last move
 
-
-  const API_BASE = "http://127.0.0.1:5000";
-
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
 
