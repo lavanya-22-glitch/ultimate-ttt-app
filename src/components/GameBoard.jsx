@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+
 const API_BASE = "http://127.0.0.1:5000";
 
 
@@ -16,58 +17,67 @@ const GameBoard = ({ config, onQuit }) => {
   const [replayInterval, setReplayInterval] = useState(500); // ms per move
   const [isAutoReplay, setIsAutoReplay] = useState(false);
 
-  // const API_BASE = "http://127.0.0.1:5000";
+  const API_BASE = "http://127.0.0.1:5000";
 
-const runBotBattle = async () => {
-  console.log("runBotBattle called"); // ✅ entry point
-  try {
-    const res = await fetch(`${API_BASE}/bot-vs-bot-run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ game_id }),
-    });
+  const [loading, setLoading] = useState(false); // ⬅️ add at top of GameBoard
 
-    console.log("Response received:", res); // ✅ check if server responded
+  const runBotBattle = async () => {
+    console.log("runBotBattle called");
+    try {
+      setLoading(true); // Show loading while waiting for backend
+      const res = await fetch(`${API_BASE}/bot-vs-bot-run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id }),
+      });
 
-    const text = await res.text(); // get raw response
-    console.log("Raw response text:", text); // ✅ see what backend returned
+      const text = await res.text();
+      console.log("Raw response text:", text);
 
-    const data = JSON.parse(text); // parse JSON manually
-    console.log("Parsed JSON:", data); // ✅ parsed object
+      const data = JSON.parse(text);
+      console.log("Parsed JSON:", data);
 
-    if (data.success) {
-      const { move_history = [], winner, board, mainboard } = data;
+      if (data.success) {
+        const { move_history = [], winner } = data;
 
-      const playMoves = async () => {
-        for (let i = 0; i < move_history.length; i++) {
-          const partialHistory = move_history.slice(0, i + 1);
+        // Save move history
+        setMoveHistory(move_history);
 
-          // Update UI for this step
-          setMoveHistory(partialHistory);
-          setMoveNumber(partialHistory.length);
+        let tempBoard = Array(9).fill().map(() => Array(9).fill(0));
+        let tempMain = Array(3).fill().map(() => Array(3).fill(0));
 
-          // If you want to recompute board at each step, do it here
-          setBoard([...board]);
-          setMainboard([...mainboard]);
+        // Hide loading NOW, before animating
+        setLoading(false);
 
-          // 🔥 Give React time to render
-          await new Promise((resolve) => setTimeout(resolve, 1000)); 
-        }
+        const playMoves = async () => {
+          for (let i = 0; i < move_history.length; i++) {
+            const { player, move } = move_history[i];
+            const [r, c] = move;
 
-        setWinner(winner);
-      };
+            tempBoard = tempBoard.map(row => [...row]);
+            tempBoard[r][c] = player;
 
-      playMoves();
-    } else {
-      console.log("Bot battle failed:", data.error);
-      alert(data.error || "Bot battle failed");
+            setBoard(tempBoard);
+            setMainboard(tempMain);
+            setMoveNumber(i + 1);
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          setWinner(winner);
+        };
+
+        playMoves();
+      } else {
+        console.log("Bot battle failed:", data.error);
+        alert(data.error || "Bot battle failed");
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Error running bot battle:", err);
+      alert("Error running bot battle");
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error running bot battle:", err); // ✅ catch errors
-    alert("Error running bot battle");
-  }
-};
-
+  };
 
   useEffect(() => {
     if (!isAutoReplay || replayIndex === -1 || replayIndex >= moveHistory.length) return;
@@ -199,45 +209,15 @@ const runBotBattle = async () => {
           <div>
             {config.mode === "Bot vs Bot" && (
               <>
-                {/* <button
-        onClick={async () => {
-          try {
-            const res = await fetch("/bot-vs-bot-move", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ game_id }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              setBoard(data.board);
-              setMainboard(data.mainboard);
-              setCurrentPlayer(data.currentPlayer);
-              setWinner(data.winner);
-              setMoveNumber(data.move_history?.length || 0);
-              setReplayIndex(-1);
-
-              // ✅ Save move history
-              setMoveHistory(data.move_history || []);
-            } else {
-              alert(data.error || "Error running bot battle");
-            }
-          } catch (err) {
-            alert("Error running bot match");
-          }
-        }}
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-700 transition"
-      >
-        Run Bot Battle
-      </button> */}
-              <button
-                onClick={runBotBattle}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md 
+                <button
+                  onClick={runBotBattle}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md 
                           hover:bg-blue-600 active:scale-95 transition-transform duration-150"
-              >
-                Run Bot Battle
-              </button>
+                >
+                  Run Bot Battle
+                </button>
 
-                {/* Replay Controls (only show if a game has finished & there are moves) */}
+                {/* Replay Controls (only show if a game has finished & there are moves)
                 {winner && moveHistory.length > 0 && (
                   <div className="flex gap-2 mt-4">
                     <button
@@ -279,7 +259,22 @@ const runBotBattle = async () => {
                   value={replayInterval}
                   onChange={(e) => setReplayInterval(Number(e.target.value))}
                 />
-                <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span>
+                <span>{(1000 / replayInterval).toFixed(1)} moves/sec</span> */}
+
+                <div
+                  className={`fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 transition-opacity duration-500 ${loading ? "opacity-100" : "opacity-0 pointer-events-none"
+                    }`}
+                >
+                  <div className="bg-white p-6 rounded-2xl shadow-lg flex flex-col items-center transform transition-transform duration-500 scale-100">
+                    <img
+                      src="/assets/sword-clash.gif"
+                      alt="Bots battling"
+                      className="w-32 h-32 object-contain mb-4 animate-pulse"
+                    />
+                    <p className="text-lg font-bold text-gray-800">Bots are battling...</p>
+                  </div>
+                </div>
+
 
               </>
             )}
@@ -367,6 +362,70 @@ const runBotBattle = async () => {
           </div>
         </div>
       )}
+
+      {/* === Replay & Speed Controls (Bottom) === */}
+      {config.mode === "Bot vs Bot" && winner && moveHistory.length > 0 && (
+        <div className="mt-8 flex flex-col items-center gap-4">
+          {/* Replay Buttons */}
+          {/* Replay Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setReplayIndex(0);
+                setBoard(Array(9).fill().map(() => Array(9).fill(0)));
+                setMainboard(Array(3).fill().map(() => Array(3).fill(0)));
+              }}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition"
+            >
+              Start Replay
+            </button>
+
+            {replayIndex >= 0 && replayIndex < moveHistory.length && (
+              <button
+                onClick={() => {
+                  if (replayIndex + 1 < moveHistory.length) {
+                    const nextMove = moveHistory[replayIndex + 1];
+                    const [r, c] = nextMove.move;
+                    setBoard(prevBoard => {
+                      const newBoard = prevBoard.map(row => [...row]);
+                      newBoard[r][c] = nextMove.player;
+                      return newBoard;
+                    });
+                    setReplayIndex(replayIndex + 1);
+                  }
+                }}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg shadow hover:bg-green-600 transition"
+              >
+                Next Move
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsAutoReplay(prev => !prev)}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition"
+            >
+              {isAutoReplay ? "Pause Auto Replay" : "Play Auto Replay"}
+            </button>
+          </div>
+
+          {/* Speed Slider */}
+          <div className="flex flex-col items-center">
+            <input
+              type="range"
+              min="100"
+              max="2000"
+              step="50"
+              value={replayInterval}
+              onChange={(e) => setReplayInterval(Number(e.target.value))}
+              className="w-64"
+            />
+            <span className="mt-1 text-sm text-gray-700">
+              {(1000 / replayInterval).toFixed(1)} moves/sec
+            </span>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
