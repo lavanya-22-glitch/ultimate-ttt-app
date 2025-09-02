@@ -16,8 +16,20 @@ const GameBoard = ({ config, onQuit }) => {
   const [replayIndex, setReplayIndex] = useState(-1);
   const [replayInterval, setReplayInterval] = useState(500); // ms per move
   const [isAutoReplay, setIsAutoReplay] = useState(false);
+  const [lastMoveCell, setLastMoveCell] = useState(null); // [row, col] of last move
+
 
   const API_BASE = "http://127.0.0.1:5000";
+
+  const [toastMessage, setToastMessage] = useState("");
+  const [showToast, setShowToast] = useState(false);
+
+  const showPopup = (message) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000); // hide after 3s
+  };
+
 
   const [loading, setLoading] = useState(false); // ⬅️ add at top of GameBoard
 
@@ -56,6 +68,8 @@ const GameBoard = ({ config, onQuit }) => {
 
             tempBoard = tempBoard.map(row => [...row]);
             tempBoard[r][c] = player;
+            
+            setLastMoveCell([r, c]); // highlight last bot move
 
             setBoard(tempBoard);
             setMainboard(tempMain);
@@ -130,15 +144,20 @@ const GameBoard = ({ config, onQuit }) => {
       setMoveNumber((prev) => prev + 1);
 
       if (lastMove && mainboard) {
-        const [lastRow, lastCol] = lastMove;
-        const miniRow = lastRow % 3;
-        const miniCol = lastCol % 3;
-        const nextIndex = miniRow * 3 + miniCol;
-        const miniStatus = mainboard[miniRow]?.[miniCol];
-        setActiveMiniBoard(miniStatus === 0 ? nextIndex : null);
-      } else {
-        setActiveMiniBoard(null);
-      }
+  const [lastRow, lastCol] = lastMove;
+  const miniRow = lastRow % 3;
+  const miniCol = lastCol % 3;
+  const nextIndex = miniRow * 3 + miniCol;
+  const miniStatus = mainboard[miniRow]?.[miniCol];
+  setActiveMiniBoard(miniStatus === 0 ? nextIndex : null);
+
+  // Highlight last move
+  setLastMoveCell(lastMove);
+} else {
+  setActiveMiniBoard(null);
+  setLastMoveCell(null);
+}
+
 
       if (winner) {
         alert(winner === 3 ? "It's a Draw!" : `Winner: ${winner === 1 ? "X" : "O"}`);
@@ -256,16 +275,33 @@ const GameBoard = ({ config, onQuit }) => {
                 const c = miniCol * 3 + (i % 3);
                 const value = board[r]?.[c];
 
+                const isLastMove = lastMoveCell && lastMoveCell[0] === r && lastMoveCell[1] === c;
+
+                if (isLastMove) console.log("Highlighting last move at:", r, c);
+// <div
+//   key={`${r}-${c}`}
+//   onClick={() => handleCellClick(r, c)}
+//   className={`
+//     flex items-center justify-center rounded-md border text-lg sm:text-xl font-bold aspect-square cursor-pointer transition
+//     ${value === 1 ? "text-red_accent" : value === 2 ? "text-blue-500" : "hover:bg-amber_dark/20"}
+//     ${isLastMove ? "bg-green-300" : "bg-white"}  // <-- highlight entire cell
+//   `}
+// >
+//   {value === 1 ? "X" : value === 2 ? "O" : ""}
+// </div>
+
                 return (
                   <div
                     key={`${r}-${c}`}
                     onClick={() => handleCellClick(r, c)}
-                    className={`flex items-center justify-center rounded-md border bg-white border-brown_dark text-lg sm:text-xl font-bold aspect-square cursor-pointer transition ${value === 1
+                    className={`flex items-center justify-center rounded-md border border-brown_dark text-lg sm:text-xl font-bold aspect-square cursor-pointer transition ${value === 1
                       ? "text-red_accent"
                       : value === 2
                         ? "text-blue-500"
                         : "hover:bg-amber_dark/20"
-                      }`}
+                      }
+                      ${isLastMove ? "bg-gold_accent/45" : "bg-white"}  // highlight entire cell if last move
+                      `}
                   >
                     {value === 1 ? "X" : value === 2 ? "O" : ""}
                   </div>
@@ -279,9 +315,12 @@ const GameBoard = ({ config, onQuit }) => {
       {/* Winner Banner */}
       {winner && (
         <div className="mt-4 text-xl font-bold text-center">
-          {winner === 3 ? "It's a Draw!" : `Player ${winner} Wins!`}
+          {winner === 3
+            ? "It's a Draw!"
+            : `${winner === 1 ? "Uploaded Bot" : `${config.difficulty} Bot`} Wins!`}
         </div>
       )}
+
 
       {/* Pause Modal */}
       {isPaused && (

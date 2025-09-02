@@ -43,6 +43,8 @@ def home():
     return jsonify({"message": "Backend is running!"})
 
 
+from werkzeug.utils import secure_filename
+
 @app.route("/start", methods=["POST"])
 def start_game():
     """Start a new game session."""
@@ -69,23 +71,30 @@ def start_game():
         "player2Name": player2_name,
     }
 
-    # Player vs Bot
+    # Player vs Bot Mode
     if mode == "Player vs Bot":
         bot_module = load_bot(difficulty)
         human_player = 1 if player_role == "Player 1" else 2
         session_data["bot_module"] = bot_module
         session_data["human_player"] = human_player
 
-    # Bot vs Bot
+        # 🔥 Let bot make the first move if human is Player 2
+        if human_player == 2:
+            bot_move = bot_module.play(game.board, game.last, 1)
+            if bot_move:
+                game.move(*bot_move)
+
+    # Bot vs Bot Mode
     elif mode == "Bot vs Bot":
         uploaded_file = request.files.get("botFile")
         if not uploaded_file:
             return jsonify({"success": False, "error": "No bot uploaded"}), 400
 
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], uploaded_file.filename)
+        filename = secure_filename(uploaded_file.filename)
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         uploaded_file.save(filepath)
-        bot1 = load_bot_from_file(filepath)
 
+        bot1 = load_bot_from_file(filepath)
         bot2_module = BOT_MODULES.get(difficulty, "medium")
         bot2 = importlib.import_module(bot2_module)
 
@@ -102,7 +111,10 @@ def start_game():
         "mainboard": game.mainboard,
         "currentPlayer": game.curr_player,
         "winner": game.get_winner(),
+        "lastMove": game.last  # 🔥 Add this
     })
+
+
 
 
 @app.route("/bot-vs-bot-move", methods=["POST"])
@@ -166,21 +178,19 @@ def bot_vs_bot_run():
         return jsonify({"success": False, "error": "Game not found"}), 400
 
     game = session["game"]
-    bot1 = session.get("bot1")
-    bot2 = session.get("bot2")
+    bot1 = session.get("bot1")  # Uploaded bot
+    bot2 = session.get("bot2")  # Default difficulty bot
 
     if not bot1 or not bot2:
         return jsonify({"success": False, "error": "Bots not loaded"}), 400
 
     board = game.board
     mainboard = game.mainboard
-    current_player = game.curr_player
-    activeMiniBoard = None
+    prev_move = game.last
     winner = game.get_winner()
     move_history = []
 
-    # Use previous move if any
-    prev_move = game.last
+    activeMiniBoard = None
 
     def get_valid_moves(board, activeMiniBoard):
         moves = []
@@ -199,12 +209,9 @@ def bot_vs_bot_run():
                         moves.append((i, j))
         return moves
 
-    # Play until a winner or maximum moves for safety
-    max_moves = 50
-    for _ in range(max_moves):
-        if winner:
-            break
-
+    max_moves = 81  # Full board max
+    while not winner and len(move_history) < max_moves:
+        current_player = game.curr_player
         current_bot = bot1 if current_player == 1 else bot2
         valid_moves = get_valid_moves(board, activeMiniBoard)
 
@@ -213,42 +220,48 @@ def bot_vs_bot_run():
         except Exception as e:
             return jsonify({"success": False, "error": f"Bot crashed: {str(e)}"}), 500
 
-        # Fallback to random if bot returns invalid move
         if not move or move not in valid_moves:
+            import random
             move = random.choice(valid_moves)
 
-        # Apply move
         r, c = move
-        game.move(r, c)  # use your game engine's method
+        game.move(r, c)
         move_history.append({"player": current_player, "move": [r, c]})
         prev_move = move
 
-        # Update activeMiniBoard based on last move and mainboard
         miniRow = r % 3
         miniCol = c % 3
-        nextIndex = miniRow * 3 + miniCol
-        activeMiniBoard = nextIndex if mainboard[miniRow][miniCol] == 0 else None
+        activeMiniBoard = miniRow * 3 + miniCol if mainboard[miniRow][miniCol] == 0 else None
 
-        # Switch player
-        current_player = 1 if current_player == 2 else 2
         winner = game.get_winner()
 
-    # Save back to session
+    # Save session
     session.update({
         "board": game.board,
         "mainboard": game.mainboard,
-        "curr_player": current_player,
+        "curr_player": game.curr_player,
         "winner": winner,
         "activeMiniBoard": activeMiniBoard,
-        "move_history": move_history
+        "move_history": move_history,
+        "player1Name": "Uploaded Bot",
+        "player2Name": f"{session.get('difficulty', 'Default')} Bot"
     })
+
+    winner_name = None
+    if winner == 1:
+        winner_name = "Uploaded Bot"
+    elif winner == 2:
+        winner_name = f"{session.get('difficulty', 'Default')} Bot"
 
     return jsonify({
         "success": True,
         "board": game.board,
         "mainboard": game.mainboard,
-        "currentPlayer": current_player,
+        "currentPlayer": game.curr_player,
         "winner": winner,
+        "winner_name": winner_name,
+        "player1": "Uploaded Bot",
+        "player2": f"{session.get('difficulty', 'Default')} Bot",
         "activeMiniBoard": activeMiniBoard,
         "move_history": move_history
     })
