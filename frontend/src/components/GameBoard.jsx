@@ -121,7 +121,7 @@ const GameBoard = ({ config, onQuit }) => {
     if (winner) return;
 
     try {
-      const res = await fetch("/move", {
+      const res = await fetch(`${API_BASE}/move`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game_id, row, col }),
@@ -275,17 +275,6 @@ const GameBoard = ({ config, onQuit }) => {
                 const isLastMove = lastMoveCell && lastMoveCell[0] === r && lastMoveCell[1] === c;
 
                 if (isLastMove) console.log("Highlighting last move at:", r, c);
-// <div
-//   key={`${r}-${c}`}
-//   onClick={() => handleCellClick(r, c)}
-//   className={`
-//     flex items-center justify-center rounded-md border text-lg sm:text-xl font-bold aspect-square cursor-pointer transition
-//     ${value === 1 ? "text-red_accent" : value === 2 ? "text-blue-500" : "hover:bg-amber_dark/20"}
-//     ${isLastMove ? "bg-green-300" : "bg-white"}  // <-- highlight entire cell
-//   `}
-// >
-//   {value === 1 ? "X" : value === 2 ? "O" : ""}
-// </div>
 
                 return (
                   <div

@@ -111,56 +111,8 @@ def start_game():
         "mainboard": game.mainboard,
         "currentPlayer": game.curr_player,
         "winner": game.get_winner(),
-        "lastMove": game.last  # 🔥 Add this
+        "lastMove": game.last 
     })
-
-# @app.route("/bot-vs-bot-move", methods=["POST"])
-# def bot_vs_bot_move():
-#     """Play out a Bot vs Bot game automatically."""
-#     data = request.get_json()
-#     game_id = data.get("game_id")
-
-#     session = games.get(game_id)
-#     if not session:
-#         return jsonify({"success": False, "error": "Invalid game ID"}), 400
-
-#     game = session["game"]
-#     bot1 = session.get("bot1")
-#     bot2 = session.get("bot2")
-
-#     if not bot1 or not bot2:
-#         return jsonify({"success": False, "error": "Bots not loaded"}), 400
-
-#     winner = game.get_winner()
-#     move_history = []
-#     prev_move = game.last
-
-#     while winner is None:
-#         current_bot = bot1 if game.curr_player == 1 else bot2
-
-#         try:
-#             move = current_bot.play(game.board, prev_move, game.curr_player)
-#         except Exception as e:
-#             return jsonify({"success": False, "error": f"Bot crashed: {str(e)}"}), 500
-
-#         if not move or not game.move(*move):
-#             return jsonify({"success": False, "error": "Invalid move by bot"}), 500
-
-#         move_history.append({"player": game.curr_player, "move": move})
-#         prev_move = move
-#         winner = game.get_winner()
-
-#     session["move_history"] = move_history
-
-#     return jsonify({
-#         "success": True,
-#         "board": game.board,
-#         "mainboard": game.mainboard,
-#         "currentPlayer": game.curr_player,
-#         "winner": winner,
-#         "lastMove": game.last,
-#         "move_history": move_history
-#     })
 
 import random
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 
+const API_BASE = "http://127.0.0.1:5000";
+
 const Menu = ({ onSelect }) => {
   const [mode, setMode] = useState(null);
   const [difficulty, setDifficulty] = useState("Medium");
@@ -46,7 +48,7 @@ const Menu = ({ onSelect }) => {
         });
       }
 
-      const res = await fetch("/start", { method: "POST", body, headers });
+      const res = await fetch(`${API_BASE}/start`, { method: "POST", body, headers });
       const data = await res.json();
 
       if (data.success) {
