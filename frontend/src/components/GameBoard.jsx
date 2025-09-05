@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API_BASE = "http://127.0.0.1:5000";
+const API_BASE = "https://ultimate-ttt-app.onrender.com";
 
 
 const GameBoard = ({ config, onQuit }) => {
