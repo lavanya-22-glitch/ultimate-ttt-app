@@ -305,7 +305,7 @@ const GameBoard = ({ config, onQuit }) => {
         <div className="mt-4 text-xl font-bold text-center">
           {winner === 3
             ? "It's a Draw!"
-            : `${winner === 1 ? "Uploaded Bot" : `${config?.difficulty || "Game"} Bot`} Wins!`}
+            : `${winner === 1 ? "Uploaded Bot" : `${config? config.difficulty || "Game"} Bot`} Wins!`}
         </div>
       )}
 
