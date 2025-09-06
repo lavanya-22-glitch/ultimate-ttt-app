@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from "react";
 
 const API_BASE = "https://ultimate-ttt-app.onrender.com";
@@ -303,7 +305,7 @@ const GameBoard = ({ config, onQuit }) => {
         <div className="mt-4 text-xl font-bold text-center">
           {winner === 3
             ? "It's a Draw!"
-            : `${winner === 1 ? "Uploaded Bot" : `${config.difficulty} Bot`} Wins!`}
+            : `${winner === 1 ? "Uploaded Bot" : `${config?.difficulty || "Game"} Bot`} Wins!`}
         </div>
       )}
 
